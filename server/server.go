@@ -35,7 +35,7 @@ func(s *Server) StartServer(port string) {
 	s.AddUser("server", nil)
 
 	// рассылаем все пришедшие сообщения
-	go BroadcastMessages(&s.clients, s.broadcast, &s.mutex)
+	go s.BroadcastMessages()
 
 	for {
 		conn, err := s.listener.Accept()
@@ -44,16 +44,15 @@ func(s *Server) StartServer(port string) {
 			fmt.Println("error connecting to client: ", err)
 		}
 
-		go HandleClient(conn, &clients, s.broadcast)
+		go s.HandleClient(conn)
 	}
 }
 
-func(s *Server) AddUser(name string, conn net.Conn) {
-	s.mutex.Lock()
+func (s *Server)BroadcastMessages() {
+	for msg := range s.broadcast {
+		s.mutex.Lock()
+		common.SendMessage(s.clients[msg.To].Conn, msg)
 
-	s.lastId += 1
-	newUser := common.User{Id: s.lastId, Name: name, Conn: conn}
-	s.clients[s.lastId] = newUser
-	
-	s.mutex.Unlock()
+		s.mutex.Unlock()
+	}
 }

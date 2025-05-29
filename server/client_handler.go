@@ -1,51 +1,87 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"net"
-	"sync"
 	"tcp-chat/common"
+	"tcp-chat/utils"
 )
-
-func BroadcastMessages (clients *map[uint64]common.User, broadcast chan common.Message, mutex *sync.Mutex) {
-	for msg := range broadcast {
-		mutex.Lock()
-		//clients[msg.To].Conn.Write([]byte(msg.Content + "\n"))
-        common.SendMessage(clients[msg.To].Conn, msg)
-        mutex.Unlock()
-	}
-}
 
 // go HandleClient(conn, &clients, s.broadcast)
 
 func (s *Server) HandleClient(conn net.Conn) {
     defer conn.Close()
 
-    reader := bufio.NewReader(conn)
+	currentId := s.pickNewId()
 
-    newMessage, error := common.ReceiveMessage(conn)
+	s.addUser(currentId, conn)	
 
-	s.AddUser(name, conn)
+	for {
+		msg, err := common.ReceiveMessage(conn)
 
-	if err != nil {
-		mutex.Lock()
-		delete(*clients, user.Id)
-		mutex.Unlock()
+		if err != nil {
+			//s.broadcast <- fmt.Sprintf("%s quit chat", name)
+			notifyUserLeft(currentId)
 
-		broadcast <- fmt.Sprintf("%s вышел из чата", name)
-		return
-    }
+			s.mutex.Lock()
+			delete(s.clients, user.Id)
+			s.mutex.Unlock()
 
+			return
+    	} else {
+			// добавляем им обоим друг друга в список открытых чатов
+			s.mutex.Lock()
+			if !utils.exists(s.clients[msg.From].ChatsWith[msg.To]) {
+				s.clients[msg.From].ChatsWith[msg.To] = struct{}{}
+				s.clients[msg.To].ChatsWith[msg.From] = struct{}{}
+			}
+			s.mutex.Unlock()
+
+			s.broadcast<- msg
+		}
+	}
 }
 
-func getName(u common.User) (string, error) {
-	common.SendMessage(u.Conn, common.Message{From: common.ServerId, To: u.Id, Content: "Enter your name"})
+func(s *Server) addUser(id uint64, conn net.Conn) {
+	nameCh := make(chan NameResult)
+
+	go s.askName(id, nameCh)
+
+	name := <-nameCh
+
+	s.mutex.Lock()
+	newUser := common.User{Id: id, Name: name.Name, Conn: conn}
+	s.clients[s.lastId] = newUser
+	s.mutex.Unlock()
+}
+
+type NameResult struct {
+	Name string
+	Err  error
+}
+
+func(s *Server) askName(id uint64, ch chan<- NameResult) {
+	s.broadcast<- common.Message{From: common.ServerId, To: id, Type: common.MessageRequestSenderName, Content: ""}
 	nameMessage, err := common.ReceiveMessage(u.Conn)
 
 	if err != nil {
-		return "", fmt.Errorf("couldn't get a name: %w", err)
+		ch <- NameResult{Name: "", Err: fmt.Errorf("couldn't get a name: %w", err)}
 	}
 
-	return nameMessage.Content, nil
+	ch <- NameResult{Name: nameMessage.Content, Err: nil}
+}
+
+func(s *Server) pickNewId() uint64{
+	s.mutex.Lock()
+	s.lastId += 1
+	newId := s.lastId
+	s.mutex.Unlock()
+
+	return newId
+}
+
+func(s *Server) notifyUserLeft(id uint64) {
+	s.mutex.Rlock() 
+	
+	for ()
 }
