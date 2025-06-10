@@ -17,3 +17,4 @@ CREATE TABLE user_chats (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (chat_with_user_id) REFERENCES users(id)
 );
+    

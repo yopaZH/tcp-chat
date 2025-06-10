@@ -1,15 +1,15 @@
 package common
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
-	"encoding/binary"
 )
 
 func EncodeMessage(msg Message) ([]byte, error) {
-        return json.Marshal(msg)
+	return json.Marshal(msg)
 }
 
 func DecodeMessage(data []byte) (Message, error) {

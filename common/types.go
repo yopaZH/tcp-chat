@@ -3,9 +3,9 @@ package common
 import "net"
 
 type User struct {
-	Id uint64
-	Name string
-	Conn net.Conn
+	Id        uint64
+	Name      string
+	Conn      net.Conn
 	ChatsWith map[uint64]struct{}
 }
 

@@ -6,16 +6,16 @@ import (
 )
 
 func main() {
-    port := ":8080"
-    server, err := NewServer(port);
+	port := ":8080"
+	server, err := NewServer(port)
 
-    if err != nil {
-        fmt.Printf("error starting server: %e", err)
-    } else {
-        fmt.Println("server is up on port:", port)
-    }
+	if err != nil {
+		fmt.Printf("error starting server: %e", err)
+	} else {
+		fmt.Println("server is up on port:", port)
+	}
 
-    defer server.listener.Close()
-    
-    server.StartServer()
+	defer server.listener.Close()
+
+	server.StartServer()
 }
