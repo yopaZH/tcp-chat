@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	//"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -18,21 +18,30 @@ type Server struct {
 	lastId uint64
 }
 
-func(s *Server) StartServer(port string) {
-	var err error
-	s.listener, err = net.Listen("tcp", port)
-	if err != nil {
-		fmt.Println("error starting up server")
-	}
-	defer s.listener.Close()
 
-	fmt.Println("server is up on port:", port)
-	
-	s.clients = make(map[uint64]common.User)
-	s.broadcast = make(chan common.Message)
+func NewServer(port string) (*Server, error) {
+    listener, err := net.Listen("tcp", port)
+    if err != nil {
+        return nil, fmt.Errorf("failed to listen: %w", err)
+    }
+
+	var s Server = Server{
+        listener:  listener,
+        clients:   make(map[uint64]common.User),
+        broadcast: make(chan common.Message),
+        mutex:     sync.Mutex{},
+        lastId:    1,
+    }
 
 	// резервируем id 0 под сервер
-	s.AddUser("server", nil)
+	s.clients[s.lastId] = common.User{Id: 0, Name: "server", Conn: nil, ChatsWith: nil}
+
+    return &s, nil
+}
+
+func(s *Server) StartServer() {
+	s.clients = make(map[uint64]common.User)
+	s.broadcast = make(chan common.Message)
 
 	// рассылаем все пришедшие сообщения
 	go s.BroadcastMessages()

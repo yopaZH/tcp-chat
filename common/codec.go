@@ -1,43 +1,32 @@
 package common
 
 import (
-	"bytes"
-	"encoding/binary"
-	"encoding/gob"
-	"io"
-	"net"
+        "encoding/json"
+        "fmt"
+        "io"
+        "net"
+        "encoding/binary"
 )
 
-func init() {
-	gob.Register(Message{})
-}
-
 func EncodeMessage(msg Message) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	if err := enc.Encode(msg); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+        return json.Marshal(msg)
 }
 
 func DecodeMessage(data []byte) (Message, error) {
 	var msg Message
-	buf := bytes.NewBuffer(data)
-	dec := gob.NewDecoder(buf)
-	err := dec.Decode(&msg)
+	err := json.Unmarshal(data, &msg)
 	return msg, err
 }
 
 func SendMessage(conn net.Conn, msg Message) error {
 	data, err := EncodeMessage(msg)
 	if err != nil {
-		return err
+		return fmt.Errorf("encode error: %w", err)
 	}
 
 	length := uint32(len(data))
 	if err := binary.Write(conn, binary.BigEndian, length); err != nil {
-		return err
+		return fmt.Errorf("length write error: %w", err)
 	}
 
 	_, err = conn.Write(data)
@@ -45,16 +34,14 @@ func SendMessage(conn net.Conn, msg Message) error {
 }
 
 func ReceiveMessage(conn net.Conn) (Message, error) {
-	var msg Message
 	var length uint32
-
 	if err := binary.Read(conn, binary.BigEndian, &length); err != nil {
-		return msg, err
+		return Message{}, fmt.Errorf("length read error: %w", err)
 	}
 
 	data := make([]byte, length)
 	if _, err := io.ReadFull(conn, data); err != nil {
-		return msg, err
+		return Message{}, fmt.Errorf("read full error: %w", err)
 	}
 
 	return DecodeMessage(data)

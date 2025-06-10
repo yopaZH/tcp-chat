@@ -10,4 +10,5 @@ const (
 	MessageRequestRecieverName
 	MessageQuitChat
 	MessageSystemNotice
+	MessageError
 )

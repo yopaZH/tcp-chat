@@ -21,38 +21,38 @@ func (s *Server) HandleClient(conn net.Conn) {
 
 		if err != nil {
 			//s.broadcast <- fmt.Sprintf("%s quit chat", name)
-			notifyUserLeft(currentId)
+			s.notifyUserLeft(currentId)
 
 			s.mutex.Lock()
-			delete(s.clients, user.Id)
+			delete(s.clients, currentId)
 			s.mutex.Unlock()
 
 			return
     	} else {
-			// добавляем им обоим друг друга в список открытых чатов
-			s.mutex.Lock()
-			if !utils.exists(s.clients[msg.From].ChatsWith[msg.To]) {
-				s.clients[msg.From].ChatsWith[msg.To] = struct{}{}
-				s.clients[msg.To].ChatsWith[msg.From] = struct{}{}
+			// добавляем им друг друга в список открытых чатов
+			if (msg.From != common.ServerId || msg.To != common.ServerId) {
+				s.updateChatsLists(msg.From, msg.To)
 			}
-			s.mutex.Unlock()
 
 			s.broadcast<- msg
 		}
 	}
 }
 
-func(s *Server) addUser(id uint64, conn net.Conn) {
+func(s *Server) addUser(id uint64, conn net.Conn) error{
 	nameCh := make(chan NameResult)
-
 	go s.askName(id, nameCh)
-
 	name := <-nameCh
 
+	if name.Err != nil {
+		return fmt.Errorf("error recieving name: %w", name.Err)
+	}
+
 	s.mutex.Lock()
-	newUser := common.User{Id: id, Name: name.Name, Conn: conn}
-	s.clients[s.lastId] = newUser
+	s.clients[s.lastId] = common.User{Id: id, Name: name.Name, Conn: conn}
 	s.mutex.Unlock()
+
+	return nil
 }
 
 type NameResult struct {
@@ -62,9 +62,10 @@ type NameResult struct {
 
 func(s *Server) askName(id uint64, ch chan<- NameResult) {
 	s.broadcast<- common.Message{From: common.ServerId, To: id, Type: common.MessageRequestSenderName, Content: ""}
-	nameMessage, err := common.ReceiveMessage(u.Conn)
+	nameMessage, err := common.ReceiveMessage(s.clients[id].Conn)
 
 	if err != nil {
+		// TODO
 		ch <- NameResult{Name: "", Err: fmt.Errorf("couldn't get a name: %w", err)}
 	}
 
@@ -81,7 +82,24 @@ func(s *Server) pickNewId() uint64{
 }
 
 func(s *Server) notifyUserLeft(id uint64) {
-	s.mutex.Rlock() 
+	s.mutex.Lock() 
+
+	for receiverId := range s.clients[id].ChatsWith {
+		s.broadcast <- common.Message{
+			From: common.ServerId, 
+			To: receiverId, 
+			Type: common.MessageQuitChat, 
+			Content: s.clients[id].Name}
+	}
 	
-	for ()
+	s.mutex.Unlock()
+}
+
+func(s *Server) updateChatsLists(from uint64, to uint64) {
+	s.mutex.Lock()
+	if !utils.Exists(to, s.clients[from].ChatsWith) {
+		s.clients[from].ChatsWith[to] = struct{}{}
+		s.clients[to].ChatsWith[from] = struct{}{}
+	}
+	s.mutex.Unlock()
 }
