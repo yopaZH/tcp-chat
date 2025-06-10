@@ -1,11 +1,11 @@
 package common
 
 import (
-        "encoding/json"
-        "fmt"
-        "io"
-        "net"
-        "encoding/binary"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net"
+	"encoding/binary"
 )
 
 func EncodeMessage(msg Message) ([]byte, error) {
