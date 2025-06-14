@@ -2,20 +2,29 @@ package main
 
 import (
 	"fmt"
-	//"tcp-chat/server"
+	"tcp-chat/config"
 )
 
 func main() {
-	port := ":8080"
-	server, err := NewServer(port)
+	cfg, err := config.LoadConfig("config/config.yaml")
+	if err != nil {
+		fmt.Printf("failed to load config: %v", err)
+	}
+
+	server, err := NewServer(cfg.Server.Port)
+	defer func(){
+		err = server.Shutdown()
+		if err != nil {
+			fmt.Println("error shuting down the server: %w", err)
+		}
+	}()
 
 	if err != nil {
 		fmt.Printf("error starting server: %e", err)
 	} else {
-		fmt.Println("server is up on port:", port)
+		fmt.Println("server is up on port:", cfg.Server.Port)
 	}
 
-	defer server.listener.Close()
-
 	server.StartServer()
+
 }

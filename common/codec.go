@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
+	"tcp-chat/transport"
 )
 
 func EncodeMessage(msg Message) ([]byte, error) {
@@ -18,7 +18,7 @@ func DecodeMessage(data []byte) (Message, error) {
 	return msg, err
 }
 
-func SendMessage(conn net.Conn, msg Message) error {
+func SendMessage(conn transport.Connection, msg Message) error {
 	data, err := EncodeMessage(msg)
 	if err != nil {
 		return fmt.Errorf("encode error: %w", err)
@@ -33,7 +33,7 @@ func SendMessage(conn net.Conn, msg Message) error {
 	return err
 }
 
-func ReceiveMessage(conn net.Conn) (Message, error) {
+func ReceiveMessage(conn transport.Connection) (Message, error) {
 	var length uint32
 	if err := binary.Read(conn, binary.BigEndian, &length); err != nil {
 		return Message{}, fmt.Errorf("length read error: %w", err)

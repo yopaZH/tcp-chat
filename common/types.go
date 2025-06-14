@@ -1,11 +1,19 @@
 package common
 
-import "net"
+import (
+	"tcp-chat/transport"
+)
+
+type ChatConnection interface {
+	Read([]byte) (int, error)
+	Write([]byte) (int, error)
+	Close() error
+}
 
 type User struct {
 	Id        uint64
 	Name      string
-	Conn      net.Conn
+	Conn      transport.Connection
 	ChatsWith map[uint64]struct{}
 }
 
