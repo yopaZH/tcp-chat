@@ -48,7 +48,9 @@ func (ms *MemoryStorage) RemoveUser(id uint64) error {
 }
 
 func (ms *MemoryStorage) GetUser(id uint64) (*common.User, error) {
+	ms.mutex.RLock()
 	user, exists := ms.clients[id]
+	ms.mutex.RUnlock()
 
 	if exists {
 		return &user, nil
