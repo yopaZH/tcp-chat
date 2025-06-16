@@ -26,13 +26,13 @@ func (s *Server) HandleClient(conn transport.Connection) error {
 		return fmt.Errorf("")
 	}
 
-	go s.BroadcastMessages(user.Id)
+	go s.BroadcastMessages(&user)
 
 	for {
 		msg, err := common.ReceiveMessage(conn)
 
 		if err != nil {
-			go s.notifyUserLeft(user)
+			go s.notifyUserLeft(&user)
 
 			s.clients.RemoveUser(user.Id)
 
@@ -41,7 +41,7 @@ func (s *Server) HandleClient(conn transport.Connection) error {
 
 		// добавляем им друг друга в список открытых чатов
 		if msg.From != common.ServerId || msg.To != common.ServerId {
-			s.updateChatsLists(msg.From, msg.To)
+			s.updateChatsLists(&user, msg.To)
 		}
 
 		// отправляем сообщение в канал для отправки
@@ -49,13 +49,7 @@ func (s *Server) HandleClient(conn transport.Connection) error {
 	}
 }
 
-func (s *Server) BroadcastMessages(id uint64) error {
-	user, err := s.clients.GetUser(id)
-
-	if err != nil {
-		return fmt.Errorf("couldn't get sender name: %w", err)
-	}
-
+func (s *Server) BroadcastMessages(user *common.User) error {
 	for msg := range user.Send {
 		user, err := s.clients.GetUser(msg.To)
 		if err != nil {
@@ -96,14 +90,7 @@ func (s *Server) pickNewId() uint64 {
 	return newId
 }
 
-func (s *Server) notifyUserLeft(id uint64) error {
-	s.mutex.Lock()
-
-	user, err := s.clients.GetUser(id)
-	if err != nil {
-		return err
-	}
-
+func (s *Server) notifyUserLeft(user *common.User) error {
 	for receiverId := range user.ChatsWith {
 		user.Send <- common.Message{
 			From:    common.ServerId,
@@ -112,25 +99,19 @@ func (s *Server) notifyUserLeft(id uint64) error {
 			Content: user.Name}
 	}
 
-	s.mutex.Unlock()
-
 	return nil
 }
 
-func (s *Server) updateChatsLists(from uint64, to uint64) error {
-	fromUser, err := s.clients.GetUser(from)
-	if err != nil {
-		return err
-	}
-	toUser, err := s.clients.GetUser(to)
+func (s *Server) updateChatsLists(from *common.User, toId uint64) error {
+	to, err := s.clients.GetUser(toId)
 	if err != nil {
 		return err
 	}
 
 	s.mutex.Lock()
-	if !utils.Exists(to, fromUser.ChatsWith) {
-		fromUser.ChatsWith[to] = struct{}{}
-		toUser.ChatsWith[from] = struct{}{}
+	if !utils.Exists(to.Id, from.ChatsWith) {
+		from.ChatsWith[to.Id] = struct{}{}
+		to.ChatsWith[from.Id] = struct{}{}
 	}
 	s.mutex.Unlock()
 
