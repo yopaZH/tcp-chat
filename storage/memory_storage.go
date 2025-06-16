@@ -26,12 +26,12 @@ func NewMemoryStorage() *MemoryStorage {
 	return &ms
 }
 
-func (ms *MemoryStorage) AddUser(user common.User) error {
+func (ms *MemoryStorage) AddUser(user common.User) (common.User, error) {
 	ms.mutex.Lock()
 	ms.clients[user.Id] = user
 	ms.mutex.Unlock()
 
-	return nil
+	return ms.clients[user.Id], nil
 }
 
 func (ms *MemoryStorage) RemoveUser(id uint64) error {
@@ -55,7 +55,7 @@ func (ms *MemoryStorage) GetUser(id uint64) (*common.User, error) {
 	if exists {
 		return &user, nil
 	} else {
-		return nil, fmt.Errorf("no user with index %d found", id)
+		return nil, fmt.Errorf("no user with id %d found", id)
 	}
 }
 

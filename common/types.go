@@ -15,6 +15,8 @@ type User struct {
 	Name      string
 	Conn      transport.Connection
 	ChatsWith map[uint64]struct{}
+
+	Send chan Message
 }
 
 type Message struct {

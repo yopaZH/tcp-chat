@@ -12,7 +12,7 @@ func main() {
 	}
 
 	server, err := NewServer(cfg.Server.Port)
-	defer func(){
+	defer func() {
 		err = server.Shutdown()
 		if err != nil {
 			fmt.Println("error shuting down the server: %w", err)
@@ -26,5 +26,4 @@ func main() {
 	}
 
 	server.StartServer()
-
 }

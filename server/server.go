@@ -10,9 +10,8 @@ import (
 )
 
 type Server struct {
-	listener  transport.ConnectionListener
-	clients   storage.UserRepository
-	broadcast chan common.Message
+	listener transport.ConnectionListener
+	clients  storage.UserRepository
 
 	mutex sync.Mutex
 
@@ -26,28 +25,31 @@ func NewServer(port string) (*Server, error) {
 	}
 
 	var s Server = Server{
-		listener:  listener,
-		clients:   storage.NewMemoryStorage(),
-		broadcast: make(chan common.Message),
-		mutex:     sync.Mutex{},
-		lastId:    1,
+		listener: listener,
+		clients:  storage.NewMemoryStorage(),
+		mutex:    sync.Mutex{},
+		lastId:   1,
 	}
 
 	// резервируем id 0 под сервер
-	s.clients.AddUser(common.User{Id: 0, Name: "server", Conn: nil, ChatsWith: nil})
+	_, err = s.clients.AddUser(common.User{Id: 0,
+		Name:      "server",
+		Conn:      nil,
+		ChatsWith: nil})
+
+	if err != nil {
+		return nil, fmt.Errorf("error reserving user (id:0) for server: %w", err)
+	}
 
 	return &s, nil
 }
 
-func (s *Server) StartServer() {
-	// рассылаем все приходящие сообщения
-	go s.BroadcastMessages()
-
+func (s *Server) StartServer() error {
 	for {
 		conn, err := s.listener.Accept()
 
 		if err != nil {
-			fmt.Println("error connecting to client:", err)
+			return fmt.Errorf("error connecting to client: %w", err)
 		}
 
 		go s.HandleClient(conn)
@@ -66,16 +68,4 @@ func (s *Server) Shutdown() error {
 	}
 
 	return nil
-}
-
-func (s *Server) BroadcastMessages() {
-	for msg := range s.broadcast {
-		s.mutex.Lock()
-		user, err := s.clients.GetUser(msg.To)
-		if err != nil {
-		}
-		common.SendMessage(user.Conn, msg)
-
-		s.mutex.Unlock()
-	}
 }

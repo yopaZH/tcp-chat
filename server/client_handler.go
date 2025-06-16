@@ -7,71 +7,84 @@ import (
 	"tcp-chat/utils"
 )
 
-// go HandleClient(conn, &clients, s.broadcast)
-
 func (s *Server) HandleClient(conn transport.Connection) error {
 	defer conn.Close()
 
-	currentId := s.pickNewId()
-
-	// TODO: поправить приём имени
-	nameCh := make(chan NameResult)
-	go s.askName(currentId, nameCh)
-	askNameResult := <-nameCh
-	if askNameResult.Err != nil {
-		return fmt.Errorf("error recieving name: %w", askNameResult.Err)
+	name, err := s.askName(conn)
+	if err != nil {
+		return fmt.Errorf("couldn't get name from user: %w", err)
 	}
 
-	s.clients.AddUser(common.User{
-		Id:        currentId,
-		Name:      askNameResult.Name,
+	user, err := s.clients.AddUser(common.User{
+		Id:        s.pickNewId(),
+		Name:      name,
 		Conn:      conn,
 		ChatsWith: make(map[uint64]struct{}),
 	})
+
+	if err != nil {
+		return fmt.Errorf("")
+	}
+
+	go s.BroadcastMessages(user.Id)
 
 	for {
 		msg, err := common.ReceiveMessage(conn)
 
 		if err != nil {
-			//s.broadcast <- fmt.Sprintf("%s quit chat", name)
-			s.notifyUserLeft(currentId)
+			go s.notifyUserLeft(user)
 
-			s.mutex.Lock()
-			s.clients.RemoveUser(currentId)
-			s.mutex.Unlock()
+			s.clients.RemoveUser(user.Id)
 
-			return fmt.Errorf("user %d disconected: %w", currentId, err)
-		} else {
-			// добавляем им друг друга в список открытых чатов
-			if msg.From != common.ServerId || msg.To != common.ServerId {
-				s.updateChatsLists(msg.From, msg.To)
-			}
-
-			s.broadcast <- msg
+			return fmt.Errorf("user %d disconected: %w", user.Id, err)
 		}
+
+		// добавляем им друг друга в список открытых чатов
+		if msg.From != common.ServerId || msg.To != common.ServerId {
+			s.updateChatsLists(msg.From, msg.To)
+		}
+
+		// отправляем сообщение в канал для отправки
+		user.Send <- msg
 	}
 }
 
-type NameResult struct {
-	Name string
-	Err  error
-}
-
-func (s *Server) askName(id uint64, ch chan<- NameResult) {
-	s.broadcast <- common.Message{
-		From:    common.ServerId,
-		To:      id,
-		Type:    common.MessageRequestSenderName,
-		Content: ""}
-
+func (s *Server) BroadcastMessages(id uint64) error {
 	user, err := s.clients.GetUser(id)
-	nameMessage, err := common.ReceiveMessage(user.Conn)
 
 	if err != nil {
-		ch <- NameResult{Name: "", Err: fmt.Errorf("couldn't get a name: %w", err)}
+		return fmt.Errorf("couldn't get sender name: %w", err)
 	}
 
-	ch <- NameResult{Name: nameMessage.Content, Err: nil}
+	for msg := range user.Send {
+		user, err := s.clients.GetUser(msg.To)
+		if err != nil {
+			return fmt.Errorf("couldn't get reciever name: %w", err)
+		}
+		common.SendMessage(user.Conn, msg)
+	}
+
+	return nil
+}
+
+func (s *Server) askName(conn transport.Connection) (string, error) {
+	err := common.SendMessage(conn, common.Message{
+		From:    common.ServerId,
+		To:      common.ServerId, // this is a bit shitcode, but i don't wanns pass id for no reason
+		Type:    common.MessageRequestSenderName,
+		Content: ""})
+
+	if err != nil {
+		return "", fmt.Errorf("error asking name from user: %w", err)
+	}
+
+	nameMessage, err := common.ReceiveMessage(conn)
+
+	if err != nil {
+		return "", fmt.Errorf("error getting name from user: %w", err)
+	}
+
+	return nameMessage.Content, nil
 }
 
 func (s *Server) pickNewId() uint64 {
@@ -92,7 +105,7 @@ func (s *Server) notifyUserLeft(id uint64) error {
 	}
 
 	for receiverId := range user.ChatsWith {
-		s.broadcast <- common.Message{
+		user.Send <- common.Message{
 			From:    common.ServerId,
 			To:      receiverId,
 			Type:    common.MessageQuitChat,
@@ -105,7 +118,6 @@ func (s *Server) notifyUserLeft(id uint64) error {
 }
 
 func (s *Server) updateChatsLists(from uint64, to uint64) error {
-	s.mutex.Lock()
 	fromUser, err := s.clients.GetUser(from)
 	if err != nil {
 		return err
@@ -115,6 +127,7 @@ func (s *Server) updateChatsLists(from uint64, to uint64) error {
 		return err
 	}
 
+	s.mutex.Lock()
 	if !utils.Exists(to, fromUser.ChatsWith) {
 		fromUser.ChatsWith[to] = struct{}{}
 		toUser.ChatsWith[from] = struct{}{}
