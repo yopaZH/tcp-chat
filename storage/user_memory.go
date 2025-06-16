@@ -14,43 +14,43 @@ type UserRepository interface {
 }
 */
 
-type MemoryStorage struct {
+type InMemoryUserRepo struct {
 	clients map[uint64]common.User
 	mutex   sync.RWMutex
 }
 
-func NewMemoryStorage() *MemoryStorage {
-	var ms MemoryStorage = MemoryStorage{
+func NewInMemoryUserRepo() *InMemoryUserRepo {
+	var ms InMemoryUserRepo = InMemoryUserRepo{
 		clients: make(map[uint64]common.User)}
 
 	return &ms
 }
 
-func (ms *MemoryStorage) AddUser(user common.User) (common.User, error) {
-	ms.mutex.Lock()
-	ms.clients[user.Id] = user
-	ms.mutex.Unlock()
+func (r *InMemoryUserRepo) AddUser(user common.User) (common.User, error) {
+	r.mutex.Lock()
+	r.clients[user.Id] = user
+	r.mutex.Unlock()
 
-	return ms.clients[user.Id], nil
+	return r.clients[user.Id], nil
 }
 
-func (ms *MemoryStorage) RemoveUser(id uint64) error {
-	_, exists := ms.clients[id]
+func (r *InMemoryUserRepo) RemoveUser(id uint64) error {
+	_, exists := r.clients[id]
 
 	if exists {
-		ms.mutex.Lock()
-		delete(ms.clients, id)
-		ms.mutex.Unlock()
+		r.mutex.Lock()
+		delete(r.clients, id)
+		r.mutex.Unlock()
 		return nil
 	} else {
 		return fmt.Errorf("no user with id:%d to delete", id)
 	}
 }
 
-func (ms *MemoryStorage) GetUser(id uint64) (*common.User, error) {
-	ms.mutex.RLock()
-	user, exists := ms.clients[id]
-	ms.mutex.RUnlock()
+func (r *InMemoryUserRepo) GetUser(id uint64) (*common.User, error) {
+	r.mutex.RLock()
+	user, exists := r.clients[id]
+	r.mutex.RUnlock()
 
 	if exists {
 		return &user, nil
@@ -60,6 +60,6 @@ func (ms *MemoryStorage) GetUser(id uint64) (*common.User, error) {
 }
 
 // просто заглушка для соответсвия интерфейсу
-func (ms *MemoryStorage) Close() error {
+func (r *InMemoryUserRepo) Close() error {
 	return nil
 }

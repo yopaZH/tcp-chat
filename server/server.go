@@ -12,6 +12,7 @@ import (
 type Server struct {
 	listener transport.ConnectionListener
 	clients  storage.UserRepository
+	chats storage.ChatRepository
 
 	mutex sync.Mutex
 
@@ -26,7 +27,7 @@ func NewServer(port string) (*Server, error) {
 
 	var s Server = Server{
 		listener: listener,
-		clients:  storage.NewMemoryStorage(),
+		clients:  storage.NewInMemoryUserRepo(),
 		mutex:    sync.Mutex{},
 		lastId:   1,
 	}
