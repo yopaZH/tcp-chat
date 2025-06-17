@@ -11,10 +11,9 @@ type ChatConnection interface {
 }
 
 type User struct {
-	Id        uint64
-	Name      string
-	Conn      transport.Connection
-	ChatsWith map[uint64]struct{}
+	Id   uint64
+	Name string
+	Conn transport.Connection
 
 	Send chan Message
 }
