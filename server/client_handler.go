@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"tcp-chat/common"
 	"tcp-chat/transport"
-	"tcp-chat/utils"
 )
 
 func (s *Server) HandleClient(conn transport.Connection) error {
@@ -16,10 +15,9 @@ func (s *Server) HandleClient(conn transport.Connection) error {
 	}
 
 	user, err := s.clients.AddUser(common.User{
-		Id:        s.pickNewId(),
-		Name:      name,
-		Conn:      conn,
-		ChatsWith: make(map[uint64]struct{}),
+		Id:   s.pickNewId(),
+		Name: name,
+		Conn: conn,
 	})
 
 	if err != nil {
@@ -32,7 +30,7 @@ func (s *Server) HandleClient(conn transport.Connection) error {
 		msg, err := common.ReceiveMessage(conn)
 
 		if err != nil {
-			go s.notifyUserLeft(&user)
+			go s.notifyUserLeft(user)
 
 			s.clients.RemoveUser(user.Id)
 
@@ -41,7 +39,11 @@ func (s *Server) HandleClient(conn transport.Connection) error {
 
 		// добавляем им друг друга в список открытых чатов
 		if msg.From != common.ServerId || msg.To != common.ServerId {
-			s.updateChatsLists(&user, msg.To)
+			chatID, err := s.chats.GetOrCreateChat(msg.From, msg.To)
+
+			if err != nil {
+				return fmt.Errorf("error creating or opening chat (id:%d): %w", chatID, err)
+			}
 		}
 
 		// отправляем сообщение в канал для отправки
@@ -90,30 +92,19 @@ func (s *Server) pickNewId() uint64 {
 	return newId
 }
 
-func (s *Server) notifyUserLeft(user *common.User) error {
-	for receiverId := range user.ChatsWith {
+func (s *Server) notifyUserLeft(user common.User) error {
+	chats, err := s.chats.GetUserChats(user.Id)
+	if err != nil {
+		return fmt.Errorf("error getting user chats list: %w", err)
+	}
+
+	for _, receiverId := range chats {
 		user.Send <- common.Message{
 			From:    common.ServerId,
 			To:      receiverId,
 			Type:    common.MessageQuitChat,
 			Content: user.Name}
 	}
-
-	return nil
-}
-
-func (s *Server) updateChatsLists(from *common.User, toId uint64) error {
-	to, err := s.clients.GetUser(toId)
-	if err != nil {
-		return err
-	}
-
-	s.mutex.Lock()
-	if !utils.Exists(to.Id, from.ChatsWith) {
-		from.ChatsWith[to.Id] = struct{}{}
-		to.ChatsWith[from.Id] = struct{}{}
-	}
-	s.mutex.Unlock()
 
 	return nil
 }

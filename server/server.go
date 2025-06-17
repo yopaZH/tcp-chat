@@ -12,7 +12,7 @@ import (
 type Server struct {
 	listener transport.ConnectionListener
 	clients  storage.UserRepository
-	chats storage.ChatRepository
+	chats    storage.ChatRepository
 
 	mutex sync.Mutex
 
@@ -28,15 +28,16 @@ func NewServer(port string) (*Server, error) {
 	var s Server = Server{
 		listener: listener,
 		clients:  storage.NewInMemoryUserRepo(),
+		chats:    storage.NewMemoryChatRepo(),
 		mutex:    sync.Mutex{},
 		lastId:   1,
 	}
 
 	// резервируем id 0 под сервер
-	_, err = s.clients.AddUser(common.User{Id: 0,
-		Name:      "server",
-		Conn:      nil,
-		ChatsWith: nil})
+	_, err = s.clients.AddUser(common.User{
+		Id:   0,
+		Name: "server",
+		Conn: nil})
 
 	if err != nil {
 		return nil, fmt.Errorf("error reserving user (id:0) for server: %w", err)
