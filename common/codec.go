@@ -19,6 +19,10 @@ func DecodeMessage(data []byte) (Message, error) {
 }
 
 func SendMessage(conn transport.Connection, msg Message) error {
+	if conn == nil {
+		return fmt.Errorf("conn is nil")
+	}
+
 	data, err := EncodeMessage(msg)
 	if err != nil {
 		return fmt.Errorf("encode error: %w", err)
