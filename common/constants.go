@@ -7,7 +7,8 @@ type MessageType int
 const (
 	MessageText MessageType = iota
 	MessageRequestSenderName
-	MessageRequestRecieverName
+	MessageNameIssuing
+	MessageIdIssuing
 	MessageQuitChat
 	MessageSystemNotice
 	MessageError
