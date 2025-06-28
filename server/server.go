@@ -1,18 +1,20 @@
 package main
 
 import (
-	//"errors"
 	"fmt"
 	"sync"
 	"tcp-chat/common"
+	"tcp-chat/services"
+	"tcp-chat/session"
 	"tcp-chat/storage"
 	"tcp-chat/transport"
 )
 
 type Server struct {
 	listener transport.ConnectionListener
-	clients  storage.UserRepository
-	chats    storage.ChatRepository
+
+	userService services.UserService
+	chats       storage.ChatRepository
 
 	mutex sync.Mutex
 
@@ -26,21 +28,18 @@ func NewServer(port string) (*Server, error) {
 	}
 
 	var s Server = Server{
-		listener: listener,
-		clients:  storage.NewInMemoryUserRepo(),
-		chats:    storage.NewMemoryChatRepo(),
-		mutex:    sync.Mutex{},
-		lastId:   1,
+		listener:    listener,
+		userService: services.NewUserService(storage.NewInMemoryUserRepo(), session.NewInMemoryManager()),
+		chats:       storage.NewMemoryChatRepo(),
+		mutex:       sync.Mutex{},
+		lastId:      0,
 	}
 
 	// резервируем id 0 под сервер
-	_, err = s.clients.AddUser(common.User{
-		Id:   0,
-		Name: "server",
-		Conn: nil})
+	_, _, err = s.userService.Register(common.ServerId, "server", nil)
 
 	if err != nil {
-		return nil, fmt.Errorf("error reserving user (id:0) for server: %w", err)
+		return nil, fmt.Errorf("error reserving user (id:%d) for server: %w", common.ServerId, err)
 	}
 
 	return &s, nil
@@ -64,7 +63,7 @@ func (s *Server) Shutdown() error {
 		return err
 	}
 
-	err = s.clients.Close()
+	err = s.userService.Close()
 	if err != nil {
 		return err
 	}
