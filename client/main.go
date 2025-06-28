@@ -33,7 +33,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to take name: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	//отправляем имя серверу
 	common.SendMessage(conn, common.Message{
 		FromName: name,
@@ -42,7 +42,7 @@ func main() {
 	})
 
 	idMsg, err := common.ReceiveMessage(conn)
-	
+
 	if err != nil || idMsg.Type != common.MessageIdIssuing {
 		fmt.Fprintf(os.Stderr, "failed to recieve id from server: %v\n", err)
 		os.Exit(1)

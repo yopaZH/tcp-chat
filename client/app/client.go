@@ -17,7 +17,7 @@ type Client struct {
 
 func NewClient(id uint64, name string, conn transport.Connection) *Client {
 	return &Client{
-		id: id,
+		id:       id,
 		name:     name,
 		conn:     conn,
 		incoming: make(chan common.Message, 32),

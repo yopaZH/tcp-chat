@@ -46,7 +46,7 @@ func (cli *CLI) Run(ctx context.Context) error {
 			msg = strings.TrimSpace(msg)
 
 			cli.client.SendUserMessage(to, msg)
-		}		
+		}
 	}
 }
 
