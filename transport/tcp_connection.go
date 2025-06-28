@@ -4,6 +4,47 @@ import (
 	"net"
 )
 
+// обёртка над net.Conn
+
+/*
+IMPLEMENTS
+
+type Connection interface {
+	Read(p []byte) (int, error)
+	Write(p []byte) (int, error)
+	Close() error
+	RemoteAddr() net.Addr
+}
+*/
+
+type tcpConn struct {
+	conn net.Conn
+}
+
+func DialTCP(address string) (Connection, error) {
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		return nil, err
+	}
+	return &tcpConn{conn: conn}, nil
+}
+
+func (c *tcpConn) Read(p []byte) (int, error) {
+	return c.conn.Read(p)
+}
+
+func (c *tcpConn) Write(p []byte) (int, error) {
+	return c.conn.Write(p)
+}
+
+func (c *tcpConn) Close() error {
+	return c.conn.Close()
+}
+
+func (c *tcpConn) RemoteAddr() net.Addr {
+	return c.conn.RemoteAddr()
+}
+
 /*
 IMPLEMENTS
 
@@ -35,37 +76,4 @@ func (l *tcpListener) Accept() (Connection, error) {
 
 func (l *tcpListener) Close() error {
 	return l.listener.Close()
-}
-
-// обёртка над net.Conn
-
-/*
-IMPLEMENTS
-
-type Connection interface {
-	Read(p []byte) (int, error)
-	Write(p []byte) (int, error)
-	Close() error
-	RemoteAddr() net.Addr
-}
-*/
-
-type tcpConn struct {
-	conn net.Conn
-}
-
-func (c *tcpConn) Read(p []byte) (int, error) {
-	return c.conn.Read(p)
-}
-
-func (c *tcpConn) Write(p []byte) (int, error) {
-	return c.conn.Write(p)
-}
-
-func (c *tcpConn) Close() error {
-	return c.conn.Close()
-}
-
-func (c *tcpConn) RemoteAddr() net.Addr {
-	return c.conn.RemoteAddr()
 }
