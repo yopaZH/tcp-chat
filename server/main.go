@@ -11,7 +11,7 @@ func main() {
 		fmt.Printf("failed to load config: %v", err)
 	}
 
-	server, err := NewServer(cfg.Server.Port)
+	server, err := NewServer(cfg.Server.Address)
 	defer func() {
 		err = server.Shutdown()
 		if err != nil {
@@ -22,7 +22,7 @@ func main() {
 	if err != nil {
 		fmt.Printf("error starting server: %e", err)
 	} else {
-		fmt.Println("server is up on port:", cfg.Server.Port)
+		fmt.Println("server is up on port:", cfg.Server.Address)
 	}
 
 	server.StartServer()
